@@ -19,6 +19,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 import static java.lang.Thread.sleep;
@@ -124,41 +125,34 @@ public class MainController implements Initializable {
 
     private void runServer() {
         try {
-
             ServerSocket serverSocket = new ServerSocket(6666);
             updateServer("Server is running and waiting for a client...");
-            while (true) { // Infinite loop
+
+            Socket clientSocket = serverSocket.accept(); // accept one client
+            updateServer("Client connected!");
+
+            DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
+            DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
+
+            while (true) {
                 try {
-                    Socket clientSocket = serverSocket.accept();
-                    updateServer("Client connected!");
-
-                    new Thread(() -> {
-                        try {
-                            sleep(3000);
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                    DataInputStream dis = new DataInputStream(clientSocket.getInputStream());
-                    DataOutputStream dos = new DataOutputStream(clientSocket.getOutputStream());
-
-                    message = dis.readUTF();
+                    String message = dis.readUTF();
                     updateServer("Message from client: " + message);
 
-                    // Sending a response back to the client
                     dos.writeUTF("Received: " + message);
 
-                    dis.close();
-                    dos.close();
-
+                    if (message.equalsIgnoreCase("exit")) break;
                 } catch (IOException e) {
-                    updateServer("Error: " + e.getMessage());
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                    updateServer("Connection lost: " + e.getMessage());
+                    break;
                 }
-                if (message.equalsIgnoreCase("exit")) break;
-
             }
+
+            dis.close();
+            dos.close();
+            clientSocket.close();
+            serverSocket.close();
+
         } catch (IOException e) {
             updateServer("Error: " + e.getMessage());
         }
@@ -178,7 +172,7 @@ public class MainController implements Initializable {
         connectButton.setLayoutX(100);
         connectButton.setLayoutY(300);
         connectButton.setOnAction(this::connectToServer);
-        // new Thread(this::connectToServer).start();
+        //new Thread(this::connectToServer).start();
 
         Label lb11 = new Label("Client");
         lb11.setLayoutX(100);
@@ -226,8 +220,34 @@ public class MainController implements Initializable {
     }
 
     private void updateTextClient(String message) {
-        // Run on the UI thread
         javafx.application.Platform.runLater(() -> lb122.setText(message + "\n"));
     }
+
+    @FXML
+    private void openClientChat(ActionEvent event) {
+        try {
+            Parent root = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/org/example/clientsevermsgexample/client-view.fxml")));
+            Stage stage = new Stage();
+            stage.setTitle("User 1 (Client)");
+            stage.setScene(new Scene(root));
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void openServerChat(ActionEvent event) {
+        try {
+            Parent root = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("/org/example/clientsevermsgexample/server-view.fxml")));
+            Stage stage = new Stage();
+            stage.setTitle("User 2 (Server)");
+            stage.setScene(new Scene(root));
+            stage.show();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }
